@@ -54,7 +54,8 @@ fn evaluate_round_part1(match_result: &str) -> Result<u32> {
         .unwrap_or_else(|| panic!("Something wrong with input data: {} ?", match_result));
 
     let score: u32;
-
+    
+    // Being able to match on tuples is nifty.
     match (ene, me) {
         ("A", "X") => score = 4,
         ("B", "X") => score = 1,
