@@ -28,7 +28,6 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-
 /// Read input data into vector of lines, each line being a string
 fn read_input_data(file_path: &str) -> Result<Vec<String>> {
     let fh = File::open(file_path)?;
@@ -83,7 +82,7 @@ fn find_badges(rucksacks: &Vec<String>) -> Result<Vec<String>> {
 }
 
 /// Calculate sum of item priorites, making use of "get_priority_score".
-fn get_priority_sum(misplaced_items: Vec<String>, alphabet: &String) -> Result<u32, anyhow::Error> {
+fn get_priority_sum(misplaced_items: Vec<String>, alphabet: &str) -> Result<u32, anyhow::Error> {
     let mut priorities = Vec::new();
     for item in misplaced_items {
         priorities.push(get_priority_score(&item, alphabet)?);
@@ -91,7 +90,6 @@ fn get_priority_sum(misplaced_items: Vec<String>, alphabet: &String) -> Result<u
     let priority_sum: u32 = priorities.iter().sum();
     Ok(priority_sum)
 }
-
 
 /// Use index of char representing an item in the constructed "alphabet"
 /// as priority score.
