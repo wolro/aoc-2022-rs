@@ -29,25 +29,25 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-
-// Split vector into each elf's inventory by using empty lines as delimiters,
-// parse strings into numbers and return sum for each elf as a vector.
+/// Parse Vector with hp strings into int, split at "none" elements into
+/// a aggregate resulting arrays into sums to return the total hp represented
+/// by the food carried by each elf.
 fn total_hp_per_elf(hp_list: Vec<String>) -> Result<Vec<u32>> {
-    let hp_per_elf: Vec<_> = hp_list.split(|item| item.is_empty()).collect();
-    // "Vec<_>" aboe means: Compiler, this is a vector, but please figure out the inner type yourself.
-    let mut total_hp_per_elf: Vec<u32> = Vec::new();
-    for item in hp_per_elf {
-        let hps: Vec<_> = item.iter().map(|e| e.parse::<u32>().unwrap()).collect();
-        let hpsum: u32 = hps.iter().sum();
-        total_hp_per_elf.push(hpsum);
-    }
+    let hp_list_int = hp_list
+        .iter()
+        .map(|v| v.parse::<u32>().ok()) // casts into Option<u32>, empty strings result into NOne
+        .collect::<Vec<_>>();
+    let total_hp_per_elf = hp_list_int
+        .split(|line| line.is_none()) // now we can split at the None elements and get a vector of arrays of Option <u32>
+        .map(|group| group.iter().map(|v| v.unwrap()).sum::<u32>()) // map arrays into their sums
+        .collect();
     Ok(total_hp_per_elf)
 }
 
-// Just read everything into a string and split into a vector afterwards.
-// Note that I started out using the "csv" crate, but this automatically
-// removes empty lines, which act as delimiter between each elf's inventory
-// here.
+/// Just read everything into a string and split into a vector afterwards.
+/// Note that I started out using the "csv" crate, but this automatically
+/// removes empty lines, which act as delimiter between each elf's inventory
+/// here.
 fn read_input_data(file_path: &str) -> Result<Vec<String>> {
     let hp_string = fs::read_to_string(file_path).expect("Reading file didn't work, wrong path?");
     let hp_list: Vec<String> = hp_string.split('\n').map(String::from).collect();
