@@ -1,3 +1,5 @@
+/// Advent of Code day 4
+/// https://adventofcode.com/2022/day/4
 use anyhow::Result;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -14,7 +16,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// First iteration, this is fore sure some ugly code and to the best we can do.
+/// First iteration, this is for sure some ugly code. At least it seems to work.
 fn find_full_double_assignments(assignments: &Vec<String>) -> Result<usize> {
     let mut full_overlaps = 0;
     for assignment in assignments {
@@ -33,7 +35,7 @@ fn find_full_double_assignments(assignments: &Vec<String>) -> Result<usize> {
     Ok(full_overlaps)
 }
 
-/// First iteration, this is fore sure some ugly code and to the best we can do.
+/// First iteration, this is for sure some ugly code. At least it seems to work.
 fn find_partial_double_assignments(assignments: &Vec<String>) -> Result<usize> {
     let mut overlaps = 0;
     for assignment in assignments {

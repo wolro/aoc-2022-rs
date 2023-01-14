@@ -1,3 +1,5 @@
+/// Advent of Code day 3
+/// https://adventofcode.com/2022/day/3
 use anyhow::Result;
 use std::fs::File;
 use std::io::{BufRead, BufReader};

@@ -1,3 +1,5 @@
+/// Advent of Code day 2
+/// https://adventofcode.com/2022/day/2
 use anyhow::Result;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -6,7 +8,7 @@ fn main() -> Result<()> {
     let file_path = "./input.txt";
     let match_results = read_input_data(file_path)?;
 
-    // Using iterators and maps to assign an element-wise function
+    // Using iterators and maps to assign a function element-wise
     // to a collection is actually quite nice.
     let scores_part1: Vec<u32> = match_results
         .iter()
@@ -54,7 +56,7 @@ fn evaluate_round_part1(match_result: &str) -> Result<u32> {
         .unwrap_or_else(|| panic!("Something wrong with input data: {} ?", match_result));
 
     let score: u32;
-    
+
     // Being able to match on tuples is nifty.
     match (ene, me) {
         ("A", "X") => score = 4,

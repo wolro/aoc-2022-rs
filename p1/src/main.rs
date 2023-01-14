@@ -1,3 +1,5 @@
+/// Advent of Code day 1
+/// https://adventofcode.com/2022/day/1
 use anyhow::Result; // "anyhow" crate wraps arbitrary error types so we don't have to.
 use std::fs;
 
