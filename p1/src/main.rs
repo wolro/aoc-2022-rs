@@ -31,9 +31,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Parse Vector with hp strings into int, split at "none" elements into
-/// a aggregate resulting arrays into sums to return the total hp represented
-/// by the food carried by each elf.
+/// Return the total hp represented by the food carried by each elf.
 fn total_hp_per_elf(hp_list: Vec<String>) -> Result<Vec<u32>> {
     let hp_list_int = hp_list
         .iter()
