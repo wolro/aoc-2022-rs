@@ -1,11 +1,16 @@
 /// Advent of Code day 6
 /// https://adventofcode.com/2022/day/6
 
-
 fn main() {
     let datastream = include_str!("../input.txt");
-    println!("First start-of-packet marker is detected after {} characters.", find_block_index(datastream, 4).unwrap());
-    println!("First start-of-packet marker is detected after {} characters.", find_block_index(datastream, 14).unwrap());
+    println!(
+        "First start-of-packet marker is detected after {} characters.",
+        find_block_index(datastream, 4).unwrap()
+    );
+    println!(
+        "First start-of-packet marker is detected after {} characters.",
+        find_block_index(datastream, 14).unwrap()
+    );
 }
 
 /// Finds index of first start-of-packet marker. The solution I found requires checking if
@@ -15,21 +20,20 @@ fn main() {
 /// run the actual uniqueness check on this.
 fn find_block_index(test_str1: &str, block_len: usize) -> Option<usize> {
     let mut first_marker_idx: Option<usize> = None; // Store the first marker index here, when found
-    for idx in 0..(test_str1.len() - (block_len-1)) {
+    for idx in 0..(test_str1.len() - (block_len - 1)) {
         // build "buffer"
         let c1 = idx;
         let c2 = idx + block_len;
         let cbuf = test_str1[c1..c2].chars().collect::<Vec<_>>();
         // Here we check if the contents of the buffer is unique, and return the
         // index of the last (newest) character relative to the full input string.
-        if !(1..cbuf.len()).any(|i| cbuf[i..].contains(&cbuf[i-1])) {
-            first_marker_idx = Some(idx+block_len);
-            break
+        if !(1..cbuf.len()).any(|i| cbuf[i..].contains(&cbuf[i - 1])) {
+            first_marker_idx = Some(idx + block_len);
+            break;
         }
     }
     first_marker_idx
 }
-
 
 /// Test algorithm on test strings provided in the puzzle description (part 1).
 #[test]
