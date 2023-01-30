@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 fn main() {
-    let lines = include_str!("../input_test.txt").lines().collect::<Vec<_>>();
+    let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
 
     let mut int_lines: Vec<Vec<u32>> = Vec::new();
     for line in lines {
@@ -23,21 +23,34 @@ fn main() {
         int_cols.push(int_col);
     }
 
-    dbg!(&int_lines[0]);
-    let mut reduced_line = int_lines[0].clone();
-    reduced_line.remove(3);
-    dbg!(&reduced_line);
-    let hlol = reduced_line
-        .iter()
-        .any(|&x| x >= 7);
-    dbg!(hlol);
+    let grid_shape = (
+        int_lines.len() as u32,
+        int_cols.len() as u32,
+    );
 
-    dbg!(&int_cols[3]);
-    let mut reduced_col = int_cols[3].clone();
-    reduced_col.remove(0);
-    dbg!(&reduced_col);
-    let vlol = reduced_col
+    // solution for part 1
+    let mut vis_cnt: u32 = 0;
+    for tree_x in 1..&int_cols.len()-1 {
+        for tree_y in 1..&int_lines.len()-1 {
+            if is_visible(&int_lines, tree_x, tree_y) || is_visible(&int_cols, tree_y, tree_x) {
+                vis_cnt += 1;
+            }
+        }
+    }
+    vis_cnt = vis_cnt + 2*grid_shape.0 + 2*grid_shape.1 - 4;
+    dbg!(vis_cnt);
+}
+
+fn is_visible(lines: &Vec<Vec<u32>>, x: usize, y: usize) -> bool {
+    let reduced_line = lines[x].clone();
+    let tree_size = reduced_line[y];
+    // reduced_line.remove(y);
+    let v_one = reduced_line[..y]
         .iter()
-        .any(|&x| x >= 7);
-    dbg!(vlol);
+        .any(|&idx| idx >= tree_size);
+    let v_two = reduced_line[y+1..]
+        .iter()
+        .any(|&idx| idx >= tree_size);
+    // dbg!(&x); dbg!(&y); dbg!(&tree_size);
+    !v_one || !v_two
 }
