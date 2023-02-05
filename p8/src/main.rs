@@ -36,8 +36,8 @@ fn is_visible(lines: &Vec<Vec<u32>>, coord_1: usize, coord_2: usize) -> Result<b
     let reduced_line = lines[coord_1].clone();
     let tree_size = reduced_line[coord_2];
 
-    let v_one = reduced_line[..coord_2].iter().any(|&idx| idx >= tree_size);
-    let v_two = reduced_line[coord_2 + 1..]
+    let v_one = reduced_line[..coord_2].iter().any(|&idx| idx >= tree_size); // "left" or "upper" side with respect to current tree
+    let v_two = reduced_line[coord_2 + 1..] // "right" or "lower" side with respect ot current tree
         .iter()
         .any(|&idx| idx >= tree_size);
 
@@ -76,7 +76,7 @@ fn viewblockers(lines: &Vec<Vec<u32>>, coord_1: usize, coord_2: usize) -> (usize
         .position(|&idx| idx >= tree_size);
 
     let one = match v_one {
-        Some(e) => e + 1,
+        Some(e) => e + 1, // elves index 1-based, not 0-based :-)
         None => coord_2,
     };
     let two = match v_two {
