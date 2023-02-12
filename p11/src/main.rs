@@ -1,4 +1,4 @@
-use std::thread::current;
+use std::{thread::current, collections::VecDeque, iter::Enumerate};
 
 /// Advent of Code day 10
 /// https://adventofcode.com/2022/day/10
@@ -7,40 +7,38 @@ use std::thread::current;
 
 #[derive(Debug, Clone, Default)]
 struct Monkey {
-    items: Vec<u32>,
-    div: u32,
+    items: VecDeque<u64>,
+    div: u64,
     op_op: char,
-    fac: Option<u32>,
-    receiver_true: u32,
-    receiver_false: u32,
+    fac: Option<u64>,
+    receiver_true: u64,
+    receiver_false: u64,
+    insp_items: u64,
 }
 impl Monkey {
-    fn insp_op(item: u32, op: char, fac: Option<u32>) -> u32 {
-        let mut operand: u32;
+    fn insp_op(item: &u64, op: &char, fac: &Option<u64>) -> u64 {
+        let mut operand: u64;
         if let Some(op) = fac {
-            operand = op;
+            operand = *op;
         } else {
-            operand = item;
+            operand = *item;
         }
 
         match op {
-            '+' => item + operand,
-            '*' => item * operand,
+            '+' => (*item + operand)/3,
+            '*' => (*item * operand)/3,
             _ => {
                 println!("Can't update item value, error with item or Monkey?");
-                dbg!(&item);
-                dbg!(&operand);
-                dbg!(&op);
-                item
+                *item
             }
         }
     }
 
-    fn receiver(self, item: u32) -> u32 {
-        if item % self.div == 0 {
-            self.receiver_true
+    fn receiver(&self, item: &u64) -> usize {
+        if *item % self.div == 0 {
+            self.receiver_true.try_into().unwrap()
         } else {
-            self.receiver_false
+            self.receiver_false.try_into().unwrap()
         }
     }
 }
@@ -73,10 +71,10 @@ fn monkey_parser(input_data: Vec<&str>) -> Vec<Monkey> {
                     if split_line[1].contains(',') {
                         current_monkey.items = split_line[1]
                             .split(',')
-                            .map(|e| e.trim().parse::<u32>().expect("Error parsing items."))
-                            .collect::<Vec<u32>>();
-                    } else if let Ok(sole_item) = split_line[1].parse::<u32>() {
-                        current_monkey.items.push(sole_item);
+                            .map(|e| e.trim().parse::<u64>().expect("Error parsing items."))
+                            .collect::<VecDeque<u64>>();
+                    } else if let Ok(sole_item) = split_line[1].parse::<u64>() {
+                        current_monkey.items.push_back(sole_item);
                     }
                 }
                 // parse operation
@@ -101,7 +99,7 @@ fn monkey_parser(input_data: Vec<&str>) -> Vec<Monkey> {
                         .split(current_monkey.op_op)
                         .last()
                         .expect("Error parsing operation: cannot get operand?");
-                    current_monkey.fac = operand.trim().parse::<u32>().ok()
+                    current_monkey.fac = operand.trim().parse::<u64>().ok()
                 }
                 // parse divisor
                 prefix if prefix.contains("Test") => {
@@ -123,13 +121,13 @@ fn monkey_parser(input_data: Vec<&str>) -> Vec<Monkey> {
 }
 
 // helper function for "monkey_parser" to extract struct field values from input data
-fn parse_splitline(split_line: &[String], field: &str) -> u32 {
+fn parse_splitline(split_line: &[String], field: &str) -> u64 {
     let err_str = format!("Error parsing {field}.");
     split_line[1]
         .split(' ')
         .last()
         .expect(&err_str)
-        .parse::<u32>()
+        .parse::<u64>()
         .unwrap()
 }
 
@@ -137,6 +135,34 @@ fn main() {
     let input_data = include_str!("../input_test.txt")
         .lines()
         .collect::<Vec<_>>();
-    let monkeys = monkey_parser(input_data);
+    let mut monkeys = monkey_parser(input_data);
+    for _round in 0..1 {
+        for mut monkey in &mut monkeys {
+            monkey.items = monkey.items.iter()
+                .map(|e| {
+                    monkey.insp_items += 1;
+                    Monkey::insp_op(e, &monkey.op_op, &monkey.fac) })
+                .collect();
+        }
+        let mut new_monkeys = monkeys.clone();
+        for (m_idx, monkey) in monkeys.iter().enumerate() {
+            for(i_idx, item) in monkey.items.iter().enumerate() {
+                let rec_idx = monkey.receiver(&monkey.items[i_idx]);
+                new_monkeys[rec_idx].items.push_back(*item);
+                new_monkeys[m_idx].items.pop_front();
+            }
+        }
+
+        monkeys = new_monkeys;
+    }
     dbg!(&monkeys);
+    let mut inspections = monkeys.iter()
+    .map(|e| e.insp_items )
+    .collect::<Vec<_>>();
+
+    inspections.sort();
+    let inspections = inspections.iter().rev().collect::<Vec<_>>();
+    let score = inspections[0] * inspections[1];
+    dbg!(score);
 }
+
