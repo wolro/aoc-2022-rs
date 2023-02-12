@@ -144,16 +144,16 @@ fn main() {
                     Monkey::insp_op(e, &monkey.op_op, &monkey.fac) })
                 .collect();
         }
-        let mut new_monkeys = monkeys.clone();
-        for (m_idx, monkey) in monkeys.iter().enumerate() {
-            for(i_idx, item) in monkey.items.iter().enumerate() {
-                let rec_idx = monkey.receiver(&monkey.items[i_idx]);
-                new_monkeys[rec_idx].items.push_back(*item);
-                new_monkeys[m_idx].items.pop_front();
+        let nr_monkeys = monkeys.len();
+        for m_idx in 0..nr_monkeys {
+            for(i_idx, item) in monkeys[m_idx].clone().items.iter().enumerate() {
+                let rec_idx = monkeys[m_idx].receiver(&monkeys[m_idx].items[i_idx]);
+                monkeys[rec_idx].items.push_back(*item);
             }
+            monkeys[m_idx].items.clear();
         }
 
-        monkeys = new_monkeys;
+
     }
     dbg!(&monkeys);
     let mut inspections = monkeys.iter()
