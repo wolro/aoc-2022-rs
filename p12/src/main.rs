@@ -50,7 +50,15 @@ impl Board {
             let mut row: Vec<Option<u32>> = Vec::new();
             for c in line.chars() {
                 match c {
-                    'A'..='z' => { row.push(c.to_digit(36)); },
+                    // Translate the chars to numbers.
+                    'A'..='z' => {
+                        if c == 'E' { //'E' should be higher than 'z' so we need to special case this.
+                            row.push(Some(36));
+                        }
+                        else {
+                            row.push(c.to_digit(36));
+                        }
+                    },
                     _ => { panic!("Couldn't parse input data into board."); }
                 }
             }
@@ -72,12 +80,16 @@ impl Board {
                     continue;
                 }
                 let board_value = self.data[new_position.1 as usize][new_position.0 as usize];
-                let board_value_current = self.data[position.1 as usize][position.0 as usize];
-                if board_value - board_value_current > 1 { // "destination square can be at most one higher" (puzzle description)
-                    continue;
-                }
                 if let Some(board_value) = board_value {
-                    successors.push(Successor { pos: new_position, cost: board_value })
+                    // compared to the version from https://github.com/gregstoll/rust-pathfinding/blob/main/src/lib.rs,
+                    // we have to make sure steps with "height difference" > 1 are not taken. Here, we just exclude
+                    // them from the list of valid successors. Alternatively, we could also just bump cost for these
+                    // steps sufficiently.
+                    if let Some(board_value_current) =  self.data[position.1 as usize][position.0 as usize]{
+                        if board_value as i16 - board_value_current as i16 <= 1 {
+                            successors.push(Successor { pos: new_position, cost: board_value })
+                        }
+                    }
                 }
             }
         }
@@ -114,6 +126,26 @@ fn get_goal_coords(input_data: &[&str]) -> (i16, i16) {
 }
 
 fn main() {
+    let input_data = include_str!("../input.txt").lines().collect::<Vec<_>>();
+    let (start_x, start_y) = get_start_coords(&input_data);
+    let (goal_x, goal_y) = get_goal_coords(&input_data);
+
+    let start_pos = Pos(start_x, start_y);
+    let goal_pos = Pos(goal_x, goal_y);
+    let board = Board::new(input_data);
+
+    let result = dijkstra(
+        &start_pos,
+        |p| board.get_successors(p).iter().map(|s| (s.pos, s.cost)).collect::<Vec<_>>(),
+        |p| *p==goal_pos);
+    let result = result.expect("No path found.");
+    let steps = result.0.len()-1;
+    println!("The goal was reached after {} steps.", &steps); // minus 1 since we have one less step than positions on board.
+}
+
+/// Do we have the correct number of steps for the test input?
+#[test]
+fn find_path_on_test_input_part1() {
     let input_data = include_str!("../input_test.txt").lines().collect::<Vec<_>>();
     let (start_x, start_y) = get_start_coords(&input_data);
     let (goal_x, goal_y) = get_goal_coords(&input_data);
@@ -127,14 +159,5 @@ fn main() {
         |p| board.get_successors(p).iter().map(|s| (s.pos, s.cost)).collect::<Vec<_>>(),
         |p| *p==goal_pos);
     let result = result.expect("No path found.");
-    dbg!(&result.0.len());
-    // dbg!(&board);
-}
-
-
-#[test]
-fn find_path_on_test_input() {
-    let input_data = include_str!("../input_test.txt").lines().collect::<Vec<_>>();
-    let board = Board::new(input_data);
-    dbg!(&board);
+    assert_eq!(&result.0.len()-1, 31) // minus 1 since we have one less step than positions on board.
 }
