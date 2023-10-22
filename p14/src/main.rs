@@ -50,7 +50,8 @@ struct P14Gui {
     source: (usize, usize),
     grid_offset: usize,
     cur_unit_pos: (usize, usize),
-    unit_nr: u32,
+    unit_nr: usize,
+    frame_ctr: usize,
     texture: Option<egui::TextureHandle>,
     texopts: egui::TextureOptions,
     cmap: Option<CMaps>,
@@ -100,12 +101,12 @@ impl P14Gui {
     /// Build heatmap view containing info elements, axis selection, colormap selection and
     /// "DragValue" boxes for color range, aspect ratio and displayed slice. To be refactored down the line.
     fn build_heatmap_view(&mut self, ui: &mut egui::Ui) {
-        self.build_texture(ui.ctx());
-
         ui.label("");
         ui.heading("Sandflow view");
         ui.label(String::from("Units dropped: ") + (self.unit_nr).to_string().as_ref());
         ui.separator();
+
+        self.build_texture(ui.ctx());
 
         let size_img: [f32; 2] = [
             self.map_grid_initial.len() as f32,
@@ -123,6 +124,8 @@ impl P14Gui {
             // .view_aspect(self.view_ui_ele.r_aspect)
             // .show_axes([self.view_ui_ele.show_axes, self.view_ui_ele.show_axes])
             .show(ui, |plot_ui| plot_ui.image(image.name("Image")));
+
+        self.frame_ctr = self.unit_nr;
     }
 
     fn update_grid(&mut self) {
@@ -140,7 +143,7 @@ impl P14Gui {
                     self.map_grid_current[x_new][y_new] = 64;
                     self.map_grid_current[x_prev][y_prev] = 0;
                 }
-                (64 | 255) => {
+                64 | 255 => {
                     if x_new == 0 {
                         return;
                     }
@@ -180,11 +183,10 @@ impl P14Gui {
 
 impl eframe::App for P14Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(std::time::Duration::from_millis(100));
+        ctx.request_repaint_after(std::time::Duration::from_millis(1));
+        self.update_grid();
         egui::CentralPanel::default().show(ctx, |ui| {
             // ui.heading("Here will be a sandflow simulator.");
-
-            self.update_grid();
             self.build_heatmap_view(ui);
         });
     }
@@ -207,10 +209,10 @@ impl Sub for Point {
 }
 
 fn main() -> Result<()> {
-    let lines = include_str!("../input_test.txt")
-        .lines()
-        .collect::<Vec<_>>();
-    // let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
+    // let lines = include_str!("../input_test.txt")
+    //     .lines()
+    //     .collect::<Vec<_>>();
+    let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
     let source = (500, 0);
 
     let stone_walls = parse_input(lines);
