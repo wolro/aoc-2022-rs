@@ -133,7 +133,7 @@ impl P14Gui {
             self.cur_unit_pos = (self.source.0 - self.grid_offset, self.source.1);
         } else {
             let (x_prev, y_prev) = self.cur_unit_pos;
-            if self.cur_unit_pos.1 == self.map_grid_current[0].len() {
+            if y_prev >= self.map_grid_current[0].len() - 1 {
                 return;
             }
             let (x_new, y_new) = (self.cur_unit_pos.0, self.cur_unit_pos.1 + 1);
@@ -233,30 +233,38 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::Vec2::new(1000.0, 660.0)),
-        ..Default::default()
-    };
+    // let options = eframe::NativeOptions {
+    //     initial_window_size: Some(egui::Vec2::new(1000.0, 660.0)),
+    //     ..Default::default()
+    // };
 
-    let gui = eframe::run_native(
-        "Sandflow Viewer",
-        options,
-        Box::new(|creation_context| {
-            let style = egui::Style {
-                visuals: egui::Visuals::dark(),
-                ..egui::Style::default()
-            };
-            creation_context.egui_ctx.set_style(style);
-            Box::new(gui_state)
-        }),
-    );
+    // let gui = eframe::run_native(
+    //     "Sandflow Viewer",
+    //     options,
+    //     Box::new(|creation_context| {
+    //         let style = egui::Style {
+    //             visuals: egui::Visuals::dark(),
+    //             ..egui::Style::default()
+    //         };
+    //         creation_context.egui_ctx.set_style(style);
+    //         Box::new(gui_state)
+    //     }),
+    // );
 
-    match gui {
-        Ok(_res) => {}
-        Err(_res) => {
-            println!("Error executing GUI thread.")
+    // match gui {
+    //     Ok(_res) => {}
+    //     Err(_res) => {
+    //         println!("Error executing GUI thread.")
+    //     }
+    // };
+
+    for _cntr in 0..200000 {
+        let last_unit = gui_state.unit_nr;
+        gui_state.update_grid();
+        if gui_state.unit_nr > last_unit {
+            print!("{}, ", gui_state.unit_nr);
         }
-    };
+    }
 
     Ok(())
 }
