@@ -46,7 +46,11 @@ impl fmt::Display for CMaps {
 #[derive(Default)]
 struct P14Gui {
     map_grid_initial: Vec<Vec<i32>>,
-    map_grid_current: Option<Vec<Vec<i32>>>,
+    map_grid_current: Vec<Vec<i32>>,
+    source: (usize, usize),
+    grid_offset: usize,
+    cur_unit_pos: (usize, usize),
+    unit_nr: u32,
     texture: Option<egui::TextureHandle>,
     texopts: egui::TextureOptions,
     cmap: Option<CMaps>,
@@ -55,7 +59,7 @@ struct P14Gui {
 impl P14Gui {
     /// Build new texture if necessary, and upload to GPU memory.
     fn build_texture(&mut self, ctx: &egui::Context) {
-        let curr_grid = self.map_grid_current.as_ref().unwrap();
+        let curr_grid: &Vec<Vec<i32>> = self.map_grid_current.as_ref();
 
         let shape = (curr_grid.len(), curr_grid[0].len());
 
@@ -100,6 +104,7 @@ impl P14Gui {
 
         ui.label("");
         ui.heading("Sandflow view");
+        ui.label(String::from("Units dropped: ") + (self.unit_nr).to_string().as_ref());
         ui.separator();
 
         let size_img: [f32; 2] = [
@@ -113,20 +118,73 @@ impl P14Gui {
             PlotPoint::new(size_img[1] / 2.0, size_img[0] / 2.0),
             vec2(size_img[1], size_img[0]),
         );
-        // .bg_fill(Color32::BLACK);
 
         Plot::new("heatmap demo")
             // .view_aspect(self.view_ui_ele.r_aspect)
             // .show_axes([self.view_ui_ele.show_axes, self.view_ui_ele.show_axes])
             .show(ui, |plot_ui| plot_ui.image(image.name("Image")));
     }
+
+    fn update_grid(&mut self) {
+        if self.cur_unit_pos == (0, 0) {
+            self.cur_unit_pos = (self.source.0 - self.grid_offset, self.source.1);
+        } else {
+            let (x_prev, y_prev) = self.cur_unit_pos;
+            if self.cur_unit_pos.1 == self.map_grid_current[0].len() {
+                return;
+            }
+            let (x_new, y_new) = (self.cur_unit_pos.0, self.cur_unit_pos.1 + 1);
+            match self.map_grid_current[x_new][y_new] {
+                0 => {
+                    self.cur_unit_pos = (x_new, y_new);
+                    self.map_grid_current[x_new][y_new] = 64;
+                    self.map_grid_current[x_prev][y_prev] = 0;
+                }
+                (64 | 255) => {
+                    if x_new == 0 {
+                        return;
+                    }
+                    let x_new_l = x_new - 1;
+                    match self.map_grid_current[x_new_l][y_new] {
+                        0 => {
+                            self.cur_unit_pos = (x_new_l, y_new);
+                            self.map_grid_current[x_new_l][y_new] = 64;
+                            self.map_grid_current[x_prev][y_prev] = 0;
+                        }
+                        64 | 255 => {
+                            if x_new == self.map_grid_current.len() {
+                                return;
+                            }
+                            let x_new_r = x_new + 1;
+                            match self.map_grid_current[x_new_r][y_new] {
+                                0 => {
+                                    self.cur_unit_pos = (x_new_r, y_new);
+                                    self.map_grid_current[x_new_r][y_new] = 64;
+                                    self.map_grid_current[x_prev][y_prev] = 0;
+                                }
+                                64 | 255 => {
+                                    self.cur_unit_pos = (0, 0);
+                                    self.unit_nr += 1;
+                                }
+                                _ => unreachable!("Something went wrong."),
+                            }
+                        }
+                        _ => unreachable!("Something went wrong."),
+                    }
+                }
+                _ => unreachable!("Something went wrong."),
+            }
+        }
+    }
 }
 
 impl eframe::App for P14Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.request_repaint_after(std::time::Duration::from_millis(100));
         egui::CentralPanel::default().show(ctx, |ui| {
             // ui.heading("Here will be a sandflow simulator.");
-            self.map_grid_current = Some(self.map_grid_initial.clone());
+
+            self.update_grid();
             self.build_heatmap_view(ui);
         });
     }
@@ -152,22 +210,25 @@ fn main() -> Result<()> {
     let lines = include_str!("../input_test.txt")
         .lines()
         .collect::<Vec<_>>();
-
     // let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
+    let source = (500, 0);
+
     let stone_walls = parse_input(lines);
     let all_wall_points = build_rock_coordinates(stone_walls);
-    let map_grid = initialize_grid(all_wall_points);
+    let (map_grid_initial, grid_offset) = initialize_grid(all_wall_points, source);
 
     // fire up GUI
     let mut gui_state = P14Gui {
-        map_grid_initial: map_grid,
-        map_grid_current: None,
-        texture: None,
+        map_grid_initial: map_grid_initial.clone(),
+        map_grid_current: map_grid_initial,
+        source,
+        grid_offset,
         texopts: egui::TextureOptions {
             magnification: egui::TextureFilter::Nearest,
             minification: egui::TextureFilter::Nearest,
         },
         cmap: Some(CMaps::Magma),
+        ..Default::default()
     };
 
     let options = eframe::NativeOptions {
@@ -198,7 +259,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn initialize_grid(all_wall_points: Vec<Point>) -> Vec<Vec<i32>> {
+fn initialize_grid(
+    all_wall_points: Vec<Point>,
+    source_coord: (usize, usize),
+) -> (Vec<Vec<i32>>, usize) {
     let x_min = all_wall_points.clone().iter().map(|e| e.x).min().unwrap();
     let x_max = all_wall_points.clone().iter().map(|e| e.x).max().unwrap();
     let y_max = all_wall_points.clone().iter().map(|e| e.y).max().unwrap();
@@ -213,7 +277,11 @@ fn initialize_grid(all_wall_points: Vec<Point>) -> Vec<Vec<i32>> {
     for grid_point in all_wall_points {
         map_grid[(grid_point.x - x_min) as usize][grid_point.y as usize] = 255;
     }
-    map_grid
+
+    let grid_offset = x_min as usize;
+    map_grid[source_coord.0 - grid_offset][source_coord.1] = 128;
+
+    (map_grid, grid_offset)
 }
 
 fn build_rock_coordinates(stone_walls: Vec<Vec<Point>>) -> Vec<Point> {
