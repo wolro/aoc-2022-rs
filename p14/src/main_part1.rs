@@ -141,9 +141,7 @@ impl P14Gui {
                 0 => {
                     self.cur_unit_pos = (x_new, y_new);
                     self.map_grid_current[x_new][y_new] = 64;
-                    if self.map_grid_current[x_prev][y_prev] != 128 {
-                        self.map_grid_current[x_prev][y_prev] = 0;
-                    }
+                    self.map_grid_current[x_prev][y_prev] = 0;
                 }
                 64 | 255 => {
                     if x_new == 0 {
@@ -154,9 +152,7 @@ impl P14Gui {
                         0 => {
                             self.cur_unit_pos = (x_new_l, y_new);
                             self.map_grid_current[x_new_l][y_new] = 64;
-                            if self.map_grid_current[x_prev][y_prev] != 128 {
-                                self.map_grid_current[x_prev][y_prev] = 0;
-                            }
+                            self.map_grid_current[x_prev][y_prev] = 0;
                         }
                         64 | 255 => {
                             if x_new == self.map_grid_current.len() {
@@ -167,17 +163,12 @@ impl P14Gui {
                                 0 => {
                                     self.cur_unit_pos = (x_new_r, y_new);
                                     self.map_grid_current[x_new_r][y_new] = 64;
-                                    if self.map_grid_current[x_prev][y_prev] != 128 {
-                                        self.map_grid_current[x_prev][y_prev] = 0;
-                                    }
+                                    self.map_grid_current[x_prev][y_prev] = 0;
                                 }
-                                64 | 255 => match self.map_grid_current[x_prev][y_prev] {
-                                    128 => {}
-                                    _ => {
-                                        self.cur_unit_pos = (0, 0);
-                                        self.unit_nr += 1;
-                                    }
-                                },
+                                64 | 255 => {
+                                    self.cur_unit_pos = (0, 0);
+                                    self.unit_nr += 1;
+                                }
                                 _ => unreachable!("Something went wrong."),
                             }
                         }
@@ -193,7 +184,7 @@ impl P14Gui {
 impl eframe::App for P14Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(std::time::Duration::from_millis(1));
-        for _idx in 0..5000 {
+        for _idx in 0..100 {
             self.update_grid();
         }
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -335,18 +326,6 @@ fn build_rock_coordinates(stone_walls: Vec<Vec<Point>>) -> Vec<Point> {
         }
         all_wall_points.push(current_wall.last().unwrap().to_owned());
     }
-
-    let y_max = all_wall_points.clone().iter().map(|e| e.y).max().unwrap();
-    let x_min = all_wall_points.clone().iter().map(|e| e.x).min().unwrap();
-    let x_max = all_wall_points.clone().iter().map(|e| e.x).max().unwrap();
-
-    for x_floor in (x_min - 200)..(x_max + 200) {
-        all_wall_points.push(Point {
-            x: x_floor,
-            y: y_max + 2,
-        });
-    }
-
     all_wall_points
 }
 
