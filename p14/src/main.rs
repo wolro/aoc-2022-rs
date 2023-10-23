@@ -184,7 +184,9 @@ impl P14Gui {
 impl eframe::App for P14Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(std::time::Duration::from_millis(1));
-        self.update_grid();
+        for _idx in 0..100 {
+            self.update_grid();
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             // ui.heading("Here will be a sandflow simulator.");
             self.build_heatmap_view(ui);
@@ -233,38 +235,38 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    // let options = eframe::NativeOptions {
-    //     initial_window_size: Some(egui::Vec2::new(1000.0, 660.0)),
-    //     ..Default::default()
-    // };
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::Vec2::new(1000.0, 660.0)),
+        ..Default::default()
+    };
 
-    // let gui = eframe::run_native(
-    //     "Sandflow Viewer",
-    //     options,
-    //     Box::new(|creation_context| {
-    //         let style = egui::Style {
-    //             visuals: egui::Visuals::dark(),
-    //             ..egui::Style::default()
-    //         };
-    //         creation_context.egui_ctx.set_style(style);
-    //         Box::new(gui_state)
-    //     }),
-    // );
+    let gui = eframe::run_native(
+        "Sandflow Viewer",
+        options,
+        Box::new(|creation_context| {
+            let style = egui::Style {
+                visuals: egui::Visuals::dark(),
+                ..egui::Style::default()
+            };
+            creation_context.egui_ctx.set_style(style);
+            Box::new(gui_state)
+        }),
+    );
 
-    // match gui {
-    //     Ok(_res) => {}
-    //     Err(_res) => {
-    //         println!("Error executing GUI thread.")
-    //     }
-    // };
-
-    for _cntr in 0..200000 {
-        let last_unit = gui_state.unit_nr;
-        gui_state.update_grid();
-        if gui_state.unit_nr > last_unit {
-            print!("{}, ", gui_state.unit_nr);
+    match gui {
+        Ok(_res) => {}
+        Err(_res) => {
+            println!("Error executing GUI thread.")
         }
-    }
+    };
+
+    // for _cntr in 0..200000 {
+    //     let last_unit = gui_state.unit_nr;
+    //     gui_state.update_grid();
+    //     if gui_state.unit_nr > last_unit {
+    //         print!("{}, ", gui_state.unit_nr);
+    //     }
+    // }
 
     Ok(())
 }
