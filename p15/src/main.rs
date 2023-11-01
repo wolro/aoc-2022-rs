@@ -1,12 +1,11 @@
+use std::collections::HashSet;
 /// Advent of Code day 15
 /// https://adventofcode.com/2022/day/15
-use std::fmt;
 use std::ops::Sub;
 
 use anyhow::Result;
-use itertools::chain;
 
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Point {
     x: i32,
     y: i32,
@@ -58,103 +57,41 @@ fn parse_input(lines: Vec<&str>) -> Result<(Vec<Point>, Vec<Point>)> {
         });
     }
 
-    dbg!(&cbeacon);
+    // dbg!(&sensors);
     Ok((sensors, cbeacon))
 }
 
-fn initialize_grid(sensors: Vec<Point>, cbeacs: Vec<Point>) -> (Vec<Vec<u8>>, (i32, i32)) {
-    let x_min = chain(
-        sensors.clone().iter().map(|e| e.x),
-        cbeacs.clone().iter().map(|e| e.x),
-    )
-    .min()
-    .unwrap();
+fn excluded_positions(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32) -> i32 {
+    let mut ex_pos = HashSet::new();
 
-    let x_max = chain(
-        sensors.clone().iter().map(|e| e.x),
-        cbeacs.clone().iter().map(|e| e.x),
-    )
-    .max()
-    .unwrap();
-
-    let y_min = chain(
-        sensors.clone().iter().map(|e| e.y),
-        cbeacs.clone().iter().map(|e| e.y),
-    )
-    .min()
-    .unwrap();
-
-    let y_max = chain(
-        sensors.clone().iter().map(|e| e.y),
-        cbeacs.clone().iter().map(|e| e.y),
-    )
-    .max()
-    .unwrap();
-
-    // initialize grid (ndarray would be better):
-    let mut map_grid: Vec<Vec<u8>> = Vec::new();
-    for _x_idx in x_min..=x_max {
-        map_grid.push(vec![0; (y_max + 1) as usize]);
-    }
-
-    // dbg!(&x_min);
-    // dbg!(&x_max);
-    // dbg!(&y_min);
-    // dbg!(&y_max);
-    // dbg!(&sensors);
-
-    // populate grid with stones
-    for grid_point in sensors {
-        map_grid[(grid_point.x - x_min) as usize][(grid_point.y - y_min) as usize] = 1;
-    }
-    for grid_point in cbeacs {
-        map_grid[(grid_point.x - x_min) as usize][(grid_point.y - y_min) as usize] = 2;
-    }
-
-    let grid_offsets = (x_min, y_min);
-
-    (map_grid, grid_offsets)
-}
-
-fn main() -> Result<()> {
-    let lines = include_str!("../input_test.txt")
-        .lines()
-        .collect::<Vec<_>>();
-
-    let (sensors, beacons) = parse_input(lines)?;
-    let (mut map_grid, grid_offsets) = initialize_grid(sensors.clone(), beacons.clone());
-
-    for sensor in sensors {
-        let closest_beac_dist = beacons.iter().map(|b| (sensor - *b).norm()).min().unwrap();
-        for x_idx in 0..map_grid.len() {
-            for y_idx in 0..map_grid[0].len() {
-                if ((Point {
-                    x: (x_idx as i32 - grid_offsets.0),
-                    y: (y_idx as i32 - grid_offsets.1),
-                } - sensor)
-                    .norm()
-                    < closest_beac_dist)
-                    && (map_grid[x_idx][y_idx] == 0)
-                {
-                    map_grid[x_idx][y_idx] = 3;
-                }
+    for (idx, sensor) in sensors.iter().enumerate() {
+        let closest_beac_dist = (*sensor - beacons[idx]).norm();
+        let x_range =
+            (sensor.x - (closest_beac_dist as i32))..(sensor.x + (closest_beac_dist as i32));
+        for x_idx in x_range {
+            let candidate = Point {
+                x: x_idx,
+                y: line_idx,
+            };
+            if ((candidate - *sensor).norm() <= closest_beac_dist)
+                && !(beacons.contains(&candidate))
+            {
+                ex_pos.insert(candidate);
             }
         }
     }
+    ex_pos.len() as i32
+}
 
-    let row_idx = 10;
-    let mut no_bcn_ctr = 0;
+fn main() -> Result<()> {
+    let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
 
-    dbg!(map_grid[0][row_idx]);
-    dbg!(map_grid.last().expect("Vector has no last element?")[row_idx]);
+    let (sensors, beacons) = parse_input(lines)?;
 
-    for checked_pos in 0..map_grid.len() {
-        dbg!(map_grid[checked_pos][row_idx]);
-        if map_grid[checked_pos][row_idx] > 0 {
-            no_bcn_ctr += 1
-        } else {
-        };
-    }
+    let row_idx = 2000000;
+
+    // let row_idx = 10;
+    let no_bcn_ctr = excluded_positions(sensors, beacons, row_idx);
 
     dbg!(&no_bcn_ctr);
 
@@ -163,7 +100,16 @@ fn main() -> Result<()> {
 
 #[test]
 fn part1_validate_on_testdata() {
-    unimplemented!();
+    let lines = include_str!("../input_test.txt")
+        .lines()
+        .collect::<Vec<_>>();
+
+    let (sensors, beacons) = parse_input(lines).unwrap();
+
+    let row_idx = 10;
+    let no_bcn_ctr = excluded_positions(sensors, beacons, row_idx);
+
+    assert_eq!(no_bcn_ctr, 26);
 }
 
 #[test]
