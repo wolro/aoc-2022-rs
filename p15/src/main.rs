@@ -2,6 +2,7 @@ use std::collections::HashSet;
 /// Advent of Code day 15
 /// https://adventofcode.com/2022/day/15
 use std::ops::Sub;
+use std::ops::Range;
 
 use anyhow::Result;
 
@@ -83,6 +84,28 @@ fn excluded_positions(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32) -
     ex_pos.len() as i32
 }
 
+
+fn beacon_position(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32, x_max: i32) -> Option<Point> {
+    let mut beac_pos = None;
+
+    for (idx, sensor) in sensors.iter().enumerate() {
+        let closest_beac_dist = (*sensor - beacons[idx]).norm();
+        for x_idx in 0..x_max {
+            let candidate = Point {
+                x: x_idx,
+                y: line_idx,
+            };
+            if ((candidate - *sensor).norm() <= closest_beac_dist)
+                && !(beacons.contains(&candidate))
+            { } else {
+                beac_pos = Some(candidate);
+                return beac_pos
+            }
+        }
+    }
+    beac_pos
+}
+
 fn main() -> Result<()> {
     let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
 
@@ -114,5 +137,23 @@ fn part1_validate_on_testdata() {
 
 #[test]
 fn part2_validate_on_testdata() {
-    unimplemented!();
+
+    let lines = include_str!("../input_test.txt")
+        .lines()
+        .collect::<Vec<_>>();
+
+    let (sensors, beacons) = parse_input(lines).unwrap();
+
+    let x_max: i32 = 20;
+    let mut beac_pos = Point {x: 0, y: 0};
+    
+    for row_idx in 0..20 {
+        if let Some(point) = beacon_position(sensors.clone(), beacons.clone(), row_idx, x_max) {
+            beac_pos = point;
+        } else {}
+    }
+
+    let beac_pos_ref = Point {x: 14, y: 11};
+
+    assert_eq!(beac_pos, beac_pos_ref);
 }
