@@ -116,6 +116,37 @@ fn beacon_position(
     Some(beac_pos_set.into_iter().copied().collect())
 }
 
+fn beacon_candidates(sensors: Vec<Point>, beacons: Vec<Point>) -> HashSet<Point> {
+    let mut candidates = HashSet::new();
+
+    for (idx, sensor) in sensors.iter().enumerate() {
+        let border = (*sensor - beacons[idx]).norm() as i32;
+        let outside_border = border + 1;
+
+        for rp_idx in 0..outside_border {
+            candidates.insert(Point {
+                x: sensor.x + outside_border - rp_idx,
+                y: sensor.y + rp_idx,
+            });
+            candidates.insert(Point {
+                x: sensor.x + outside_border - rp_idx,
+                y: sensor.y - rp_idx,
+            });
+            candidates.insert(Point {
+                x: sensor.x - outside_border + rp_idx,
+                y: sensor.y + rp_idx,
+            });
+            candidates.insert(Point {
+                x: sensor.x - outside_border + rp_idx,
+                y: sensor.y - rp_idx,
+            });
+        }
+    }
+
+    dbg!(&candidates.len());
+    candidates
+}
+
 fn main() -> Result<()> {
     let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
     let (sensors, beacons) = parse_input(lines)?;
@@ -176,6 +207,22 @@ fn part2_validate_on_testdata() {
             }
         }
     }
+
+    let beac_pos_ref = Point { x: 14, y: 11 };
+
+    assert_eq!(beac_pos, beac_pos_ref);
+}
+
+#[test]
+fn part2_validate_on_testdata_v2() {
+    let lines = include_str!("../input_test.txt")
+        .lines()
+        .collect::<Vec<_>>();
+
+    let (sensors, beacons) = parse_input(lines).unwrap();
+    let beac_pos = Point { x: 0, y: 0 };
+
+    let candidates = beacon_candidates(sensors, beacons);
 
     let beac_pos_ref = Point { x: 14, y: 11 };
 
