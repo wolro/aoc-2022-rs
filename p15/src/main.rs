@@ -1,8 +1,8 @@
-use std::collections::HashSet;
 /// Advent of Code day 15
 /// https://adventofcode.com/2022/day/15
+use std::collections::HashSet;
 use std::ops::Sub;
-use std::ops::Range;
+use std::time::Instant;
 
 use anyhow::Result;
 
@@ -84,9 +84,15 @@ fn excluded_positions(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32) -
     ex_pos.len() as i32
 }
 
-
-fn beacon_position(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32, x_max: i32) -> Option<Point> {
-    let mut beac_pos = None;
+fn beacon_position(
+    sensors: Vec<Point>,
+    beacons: Vec<Point>,
+    line_idx: i32,
+    x_max: i32,
+) -> Option<Vec<Point>> {
+    let mut all_pos = HashSet::new();
+    let mut ex_pos = HashSet::new();
+    // let mut beac_pos: Option<Vec<Point>> = None;
 
     for (idx, sensor) in sensors.iter().enumerate() {
         let closest_beac_dist = (*sensor - beacons[idx]).norm();
@@ -95,28 +101,45 @@ fn beacon_position(sensors: Vec<Point>, beacons: Vec<Point>, line_idx: i32, x_ma
                 x: x_idx,
                 y: line_idx,
             };
+            if !(beacons.contains(&candidate)) {
+                all_pos.insert(candidate);
+            }
             if ((candidate - *sensor).norm() <= closest_beac_dist)
                 && !(beacons.contains(&candidate))
-            { } else {
-                beac_pos = Some(candidate);
-                return beac_pos
+            {
+                // dbg!(&candidate);
+                ex_pos.insert(candidate);
             }
         }
     }
-    beac_pos
+    let beac_pos_set = all_pos.difference(&ex_pos);
+    Some(beac_pos_set.into_iter().copied().collect())
 }
 
 fn main() -> Result<()> {
     let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
-
     let (sensors, beacons) = parse_input(lines)?;
 
+    let before_part1 = Instant::now();
     let row_idx = 2000000;
-
-    // let row_idx = 10;
-    let no_bcn_ctr = excluded_positions(sensors, beacons, row_idx);
-
+    let no_bcn_ctr = excluded_positions(sensors.clone(), beacons.clone(), row_idx);
+    println!("Part 1:");
     dbg!(&no_bcn_ctr);
+    println!("Elapsed time: {:.2?}", before_part1.elapsed());
+
+    let before_part2 = Instant::now();
+    let x_max: i32 = 1;
+    let mut beac_pos = Point { x: 0, y: 0 };
+    for row_idx in 0..4000000 {
+        if let Some(points) = beacon_position(sensors.clone(), beacons.clone(), row_idx, x_max) {
+            if !points.is_empty() {
+                beac_pos = points[0];
+            }
+        }
+    }
+    println!("Part 2:");
+    dbg!(beac_pos);
+    println!("Elapsed time: {:.2?}", before_part2.elapsed());
 
     Ok(())
 }
@@ -137,7 +160,6 @@ fn part1_validate_on_testdata() {
 
 #[test]
 fn part2_validate_on_testdata() {
-
     let lines = include_str!("../input_test.txt")
         .lines()
         .collect::<Vec<_>>();
@@ -145,15 +167,17 @@ fn part2_validate_on_testdata() {
     let (sensors, beacons) = parse_input(lines).unwrap();
 
     let x_max: i32 = 20;
-    let mut beac_pos = Point {x: 0, y: 0};
-    
+    let mut beac_pos = Point { x: 0, y: 0 };
+
     for row_idx in 0..20 {
-        if let Some(point) = beacon_position(sensors.clone(), beacons.clone(), row_idx, x_max) {
-            beac_pos = point;
-        } else {}
+        if let Some(points) = beacon_position(sensors.clone(), beacons.clone(), row_idx, x_max) {
+            if !points.is_empty() {
+                beac_pos = points[0];
+            }
+        }
     }
 
-    let beac_pos_ref = Point {x: 14, y: 11};
+    let beac_pos_ref = Point { x: 14, y: 11 };
 
     assert_eq!(beac_pos, beac_pos_ref);
 }
