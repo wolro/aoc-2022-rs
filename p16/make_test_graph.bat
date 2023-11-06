@@ -1,0 +1,1 @@
+dot -Tpng -Gdpi=300 test_graph.dot -o test_graph.png
