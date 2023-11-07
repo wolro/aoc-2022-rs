@@ -11,7 +11,7 @@ use petgraph::dot::{Config, Dot};
 use petgraph::graph::{Graph, NodeIndex, UnGraph};
 use petgraph::prelude::*;
 use rand::Rng;
-// use rayon::prelude::*;
+use rayon::prelude::*;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 struct Valve {
@@ -97,6 +97,90 @@ fn build_graph(
     Ok((graph, node_index_map))
 }
 
+/// In case I refactor this into struct/impl I can untangle this very procedural piece of code :-)
+fn valvewalk_mc(
+    mut graph: Graph<Valve, u32, Undirected>,
+    node_index_map: HashMap<String, NodeIndex>,
+) -> (u32, Vec<String>) {
+    // reset variables
+    let mut released_pressure = 0;
+    let mut path: Vec<String> = Vec::new();
+    let mut current_node = String::from("AA");
+    let mut flow_rates: Vec<u32> = Vec::new();
+    let mut time: u8 = 0;
+    let mut rng = rand::thread_rng();
+    for reset_idx in graph.node_indices() {
+        graph[reset_idx].valve_open = false;
+    }
+
+    loop {
+        let idx = idx_by_name(&node_index_map, current_node.as_str());
+        path.push(current_node.to_owned());
+
+        // open valve, or not
+        if !(graph[idx].valve_open || graph[idx].flowrate == 0) {
+            let max_flowrate = get_max_flowrate(&graph);
+
+            let open_threshold = 1.0 - (graph[idx].flowrate as f64) / (max_flowrate as f64);
+            // let open_threshold = 0.5;
+            let open_rng: f64 = rng.gen();
+            if open_rng > open_threshold {
+                graph[idx].valve_open = true;
+
+                flow_rates.push(graph[idx].flowrate);
+                path.push(String::from("Valve opened."));
+                // Update released pressure
+                for rate in &flow_rates {
+                    released_pressure += *rate;
+                }
+                time += 1;
+            }
+        }
+
+        if time >= 29 {
+            break;
+        }
+
+        // pick tunnel and move to next valve, or not
+        let conn_string = graph[idx].connections.clone();
+        let conns = conn_string
+            .split(", ")
+            .map(|e| e.to_owned())
+            .collect::<Vec<_>>();
+        let path_rng: f32 = rng.gen();
+        let path_choices = conns.len() - 1;
+        let path_coin = (path_rng * (path_choices as f32)).round() as usize;
+
+        current_node = conns[path_coin].clone();
+        time += 1;
+
+        // Update released pressure
+        for rate in &flow_rates {
+            released_pressure += *rate;
+        }
+
+        if time >= 29 {
+            break;
+        }
+    }
+
+    (released_pressure, path)
+}
+
+/// Return maximum available flow rate (corresponding to valves not already opened)
+/// used for weighting of coin flip to open valve or not
+fn get_max_flowrate(graph: &Graph<Valve, u32, Undirected>) -> u32 {
+    let mut max_flowrate = 0;
+    for rate_idx in graph.node_indices() {
+        max_flowrate = if (graph[rate_idx].flowrate > max_flowrate) && !graph[rate_idx].valve_open {
+            graph[rate_idx].flowrate
+        } else {
+            max_flowrate
+        };
+    }
+    max_flowrate
+}
+
 // fn node_by_name(
 //     node_index_map: &HashMap<String, NodeIndex>,
 //     valve_name: &str,
@@ -130,14 +214,13 @@ fn main() -> Result<()> {
     let valves = parse_input(lines)?;
 
     let before_part1 = Instant::now();
-    let (mut graph, node_index_map) = build_graph(valves)?;
-    let mut pressures: Vec<u32> = Vec::new();
+    let (graph, node_index_map) = build_graph(valves)?;
 
-    for _rep_idx in 0..2000000 {
-        let (pressure, _path) = valvewalk_mc(graph.clone(), node_index_map.clone());
-        pressures.push(pressure);
-    }
-    // dbg!(&best_path);
+    let pressures: Vec<u32> = (0..1000000)
+        .into_par_iter()
+        .map(|_rep_idx| valvewalk_mc(graph.clone(), node_index_map.clone()).0)
+        .collect();
+
     dbg!(pressures.iter().max().unwrap());
 
     // export_graph(&graph)?;
@@ -150,82 +233,6 @@ fn main() -> Result<()> {
     println!("Elapsed time: {:.2?}", before_part2.elapsed());
 
     Ok(())
-}
-
-fn valvewalk_mc(
-    mut graph: Graph<Valve, u32, Undirected>,
-    node_index_map: HashMap<String, NodeIndex>,
-) -> (u32, Vec<String>) {
-    // reset variables
-    let mut released_pressure = 0;
-    let mut path: Vec<String> = Vec::new();
-    let mut current_node = String::from("AA");
-    let mut flow_rates: Vec<u32> = Vec::new();
-    let mut time: u8 = 0;
-    let mut rng = rand::thread_rng();
-    for reset_idx in graph.node_indices() {
-        graph[reset_idx].valve_open = false;
-    }
-
-    loop {
-        let idx = idx_by_name(&node_index_map, current_node.as_str());
-        path.push(current_node.to_owned());
-
-        // open valve, or not
-        if !(graph[idx].valve_open || graph[idx].flowrate == 0) {
-            let open_rng: f64 = rng.gen();
-            let mut max_flowrate = 0;
-            for rate_idx in graph.node_indices() {
-                max_flowrate =
-                    if (graph[rate_idx].flowrate > max_flowrate) && !graph[rate_idx].valve_open {
-                        graph[rate_idx].flowrate
-                    } else {
-                        max_flowrate
-                    };
-            }
-
-            // let open_threshold = 1.0 - (graph[idx].flowrate as f64) / (max_flowrate as f64);
-            let open_threshold = 1.0 - (graph[idx].flowrate as f64) / (max_flowrate as f64);
-
-            if open_rng > open_threshold {
-                graph[idx].valve_open = true;
-                time += 1;
-                flow_rates.push(graph[idx].flowrate);
-                path.push(String::from("Valve opened."));
-                // Update released pressure
-                for rate in &flow_rates {
-                    released_pressure += *rate;
-                }
-                if time >= 29 {
-                    break;
-                }
-            }
-        }
-
-        // pick tunnel and move to next valve, or not
-        let conn_string = graph[idx].connections.clone();
-        let conns = conn_string
-            .split(", ")
-            .map(|e| e.to_owned())
-            .collect::<Vec<_>>();
-        let path_rng: f32 = rng.gen();
-        let path_choices = conns.len() - 1;
-        let path_coin = (path_rng * (path_choices as f32)).round() as usize;
-
-        current_node = conns[path_coin].clone();
-        time += 1;
-
-        // Update released pressure
-        for rate in &flow_rates {
-            released_pressure += *rate;
-        }
-
-        if time >= 29 {
-            break;
-        }
-    }
-
-    (released_pressure, path)
 }
 
 #[test]
