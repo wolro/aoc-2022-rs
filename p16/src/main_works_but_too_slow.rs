@@ -7,12 +7,10 @@ use std::io::Write;
 use std::time::Instant;
 
 use anyhow::Result;
-use petgraph::algo::floyd_warshall;
 use petgraph::dot::{Config, Dot};
 use petgraph::graph::{Graph, NodeIndex, UnGraph};
 use petgraph::prelude::*;
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use rayon::prelude::*;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -209,104 +207,21 @@ fn get_max_flowrate(graph: &Graph<Valve, u32, Undirected>) -> u32 {
 // }
 
 fn main() -> Result<()> {
-    let lines = include_str!("../input_test.txt")
-        .lines()
-        .collect::<Vec<_>>();
+    let lines = include_str!("../input.txt").lines().collect::<Vec<_>>();
 
     let valves = parse_input(lines)?;
 
     let before_part1 = Instant::now();
-    let (mut graph, node_index_map) = build_graph(valves)?;
+    let (graph, node_index_map) = build_graph(valves)?;
 
     export_graph(&graph)?;
 
-    let shortest_distances = floyd_warshall::floyd_warshall(&graph, |_edge| 1).unwrap();
-
-    let relevant_nodes_ini: Vec<_> = graph
-        .node_indices()
-        .filter(|idx| (graph[*idx].flowrate > 0) || (graph[*idx].valvename == "AA"))
+    let pressures: Vec<u32> = (0..100000000)
+        .into_par_iter()
+        .map(|_rep_idx| valvewalk_mc(graph.clone(), node_index_map.clone()).0)
         .collect();
 
-    let mut relevant_nodes = relevant_nodes_ini.clone();
-    dbg!(&relevant_nodes);
-
-    let relevant_node_names: Vec<_> = relevant_nodes
-        .clone()
-        .iter()
-        .map(|idx| graph[*idx].valvename.clone())
-        .collect();
-    dbg!(&relevant_node_names);
-    dbg!(shortest_distances[&(relevant_nodes[0], relevant_nodes[5])]);
-
-    let start_node = idx_by_name(&node_index_map, "AA");
-    let mut pressures: Vec<u32> = Vec::new();
-    let mut paths: Vec<Vec<String>> = Vec::new();
-
-    for loop_idx in 0..100000 {
-        relevant_nodes.shuffle(&mut thread_rng());
-        let mut time = 0;
-        let mut released_pressure = 0;
-        let mut flow_rates: Vec<u32> = Vec::new();
-        let mut rng = rand::thread_rng();
-        let mut path: Vec<String> = Vec::new();
-        for reset_idx in graph.node_indices() {
-            graph[reset_idx].valve_open = false;
-        }
-
-        'outer: loop {
-            for i in 0..(relevant_nodes.len() - 1) {
-                let start_idx = relevant_nodes[i];
-                let target_idx = relevant_nodes[i + 1];
-                path.push(graph[target_idx].valvename.clone());
-
-                for _t in 0..shortest_distances[&(start_idx, target_idx)] {
-                    time += 1;
-                    for rate in &flow_rates {
-                        released_pressure += *rate;
-                    }
-                    if time >= 29 {
-                        break 'outer;
-                    }
-                }
-
-                // open valve, or not
-                if !(graph[target_idx].valve_open) {
-                    let max_flowrate = get_max_flowrate(&graph);
-
-                    let open_threshold =
-                        1.0 - (graph[target_idx].flowrate as f64) / (max_flowrate as f64);
-                    // let open_threshold = 0.5;
-                    let open_rng: f64 = rng.gen();
-                    if open_rng > open_threshold {
-                        graph[target_idx].valve_open = true;
-
-                        flow_rates.push(graph[target_idx].flowrate);
-                        path.push(String::from("Valve opened."));
-                        // Update released pressure
-                        time += 1;
-                        for rate in &flow_rates {
-                            released_pressure += *rate;
-                        }
-                    }
-                }
-                if time >= 29 {
-                    break 'outer;
-                }
-            }
-        }
-        pressures.push(released_pressure);
-        paths.push(path);
-    }
-
-    dbg!(&pressures.len());
     dbg!(pressures.iter().max().unwrap());
-
-    // let pressures: Vec<u32> = (0..1000000)
-    //     .into_par_iter()
-    //     .map(|_rep_idx| valvewalk_mc(graph.clone(), node_index_map.clone()).0)
-    //     .collect();
-
-    // dbg!(pressures.iter().max().unwrap());
 
     println!("Part 1:");
     println!("Elapsed time: {:.2?}", before_part1.elapsed());
