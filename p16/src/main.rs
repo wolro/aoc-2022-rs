@@ -209,7 +209,7 @@ fn get_max_flowrate(graph: &Graph<Valve, u32, Undirected>) -> u32 {
 // }
 
 fn main() -> Result<()> {
-    let lines = include_str!("../input_test.txt")
+    let lines = include_str!("../input.txt")
         .lines()
         .collect::<Vec<_>>();
 
@@ -228,6 +228,7 @@ fn main() -> Result<()> {
         .collect();
 
     let mut relevant_nodes = relevant_nodes_ini.clone();
+    // dbg!(&relevant_nodes.len());
 
     let mut relevant_node_names: Vec<_> = relevant_nodes
         .clone()
@@ -235,28 +236,65 @@ fn main() -> Result<()> {
         .map(|idx| graph[*idx].valvename.clone())
         .collect();
 
-    dbg!(&relevant_node_names);
+    // dbg!(&relevant_node_names);
 
     let mut pressures: Vec<u32> = Vec::new();
     let mut paths: Vec<Vec<String>> = Vec::new();
     let start_node = idx_by_name(&node_index_map, "AA");
 
-    for loop_idx in 0..1000000 {
+    for loop_idx in 0..10000000 {
         relevant_nodes.shuffle(&mut thread_rng());
+        // relevant_nodes = vec![
+        //     idx_by_name(&node_index_map, "AA"),
+        //     idx_by_name(&node_index_map, "DD"),
+        //     idx_by_name(&node_index_map, "BB"),
+        //     idx_by_name(&node_index_map, "JJ"),
+        //     idx_by_name(&node_index_map, "HH"),
+        //     idx_by_name(&node_index_map, "EE"),
+        //     idx_by_name(&node_index_map, "CC"),
+        // ];
+
+        // relevant_nodes = vec![
+        //     idx_by_name(&node_index_map, "AA"),
+        //     idx_by_name(&node_index_map, "DD"),
+        //     idx_by_name(&node_index_map, "CC"),
+        //     idx_by_name(&node_index_map, "BB"),
+        //     idx_by_name(&node_index_map, "JJ"),
+        //     idx_by_name(&node_index_map, "EE"),
+        //     idx_by_name(&node_index_map, "HH"),
+        // ];
 
         let mut loop_nodes = relevant_nodes.clone();
         loop_nodes.insert(0, start_node);
+        // dbg!(&loop_nodes);
         let mut time = 0;
         let mut released_pressure = 0;
         let mut flow_rates: Vec<u32> = Vec::new();
         let mut rng = rand::thread_rng();
         let mut path: Vec<String> = Vec::new();
+        let mut cntr: usize = 0;
         for reset_idx in graph.node_indices() {
             graph[reset_idx].valve_open = false;
         }
 
-        'outer: loop {
+        let mut relevant_node_names: Vec<_> = loop_nodes
+            .clone()
+            .iter()
+            .map(|idx| graph[*idx].valvename.clone())
+            .collect();
+
+        path = relevant_node_names;
+        let mut loop_done = false;
+
+        // 'outer: loop {            
+            // cntr+=1;
+            // dbg!(&cntr);
+            // if loop_done {
+            //     break;
+            // }
             for i in 0..(loop_nodes.len() - 1) {
+                loop_done = true;
+               
                 let start_idx = loop_nodes[i];
                 let target_idx = loop_nodes[i + 1];
 
@@ -267,11 +305,11 @@ fn main() -> Result<()> {
                     // for rate in &flow_rates {
                     //     released_pressure += *rate;
                     // }
-                    path.push(format!("Minute {}", &time));
-                    path.push(format!("Releasing {} pressure.", &rel_p_permin));
-                    if time >= 30 {
-                        break 'outer;
-                    }
+                    // path.push(format!("Minute {}", &time));
+                    // path.push(format!("Releasing {} pressure.", &rel_p_permin));
+                    // if time >= 30 {
+                    //     break 'outer;                        
+                    // }
                 }
 
                 path.push(format!(
@@ -293,22 +331,29 @@ fn main() -> Result<()> {
                         let rel_p_permin: u32 = flow_rates.clone().iter().sum();
                         released_pressure += rel_p_permin;
                         flow_rates.push(graph[target_idx].flowrate);
-                        path.push(format!("Minute {}", &time));
-                        path.push(format!("Releasing {} pressure.", &rel_p_permin));
+                        // path.push(format!("Minute {}", &time));
+                        // path.push(format!("Releasing {} pressure.", &rel_p_permin));
 
                         graph[target_idx].valve_open = true;
-                        path.push(String::from("Valve opened."));
+                        // path.push(String::from("Valve opened."));
                         // for rate in &flow_rates {
                         //     released_pressure += *rate;
                         // }
 
-                        if time >= 30 {
-                            break 'outer;
-                        }
+                        // if time >= 30 {
+                        //     // dbg!("Broke during opening.");
+                        //     break 'outer;
+                        // }                        
                     }
                 }
             }
-        }
+
+            let rel_p_permin: u32 = flow_rates.clone().iter().sum();
+            while time < 30 {
+                released_pressure += rel_p_permin;
+                time += 1;
+            }
+        // }
         pressures.push(released_pressure);
         paths.push(path);
     }
