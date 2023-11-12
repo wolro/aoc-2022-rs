@@ -224,26 +224,28 @@ fn main() -> Result<()> {
 
     let relevant_nodes_ini: Vec<_> = graph
         .node_indices()
-        .filter(|idx| (graph[*idx].flowrate > 0) || (graph[*idx].valvename == "AA"))
+        .filter(|idx| (graph[*idx].flowrate > 0))
         .collect();
 
     let mut relevant_nodes = relevant_nodes_ini.clone();
-    dbg!(&relevant_nodes);
 
-    let relevant_node_names: Vec<_> = relevant_nodes
+    let mut relevant_node_names: Vec<_> = relevant_nodes
         .clone()
         .iter()
         .map(|idx| graph[*idx].valvename.clone())
         .collect();
-    dbg!(&relevant_node_names);
-    dbg!(shortest_distances[&(relevant_nodes[0], relevant_nodes[5])]);
 
-    let start_node = idx_by_name(&node_index_map, "AA");
+    dbg!(&relevant_node_names);
+
     let mut pressures: Vec<u32> = Vec::new();
     let mut paths: Vec<Vec<String>> = Vec::new();
+    let start_node = idx_by_name(&node_index_map, "AA");
 
-    for loop_idx in 0..100000 {
+    for loop_idx in 0..1000000 {
         relevant_nodes.shuffle(&mut thread_rng());
+
+        let mut loop_nodes = relevant_nodes.clone();
+        loop_nodes.insert(0, start_node);
         let mut time = 0;
         let mut released_pressure = 0;
         let mut flow_rates: Vec<u32> = Vec::new();
@@ -254,23 +256,31 @@ fn main() -> Result<()> {
         }
 
         'outer: loop {
-            for i in 0..(relevant_nodes.len() - 1) {
-                let start_idx = relevant_nodes[i];
-                let target_idx = relevant_nodes[i + 1];
-                path.push(graph[target_idx].valvename.clone());
+            for i in 0..(loop_nodes.len() - 1) {
+                let start_idx = loop_nodes[i];
+                let target_idx = loop_nodes[i + 1];
 
                 for _t in 0..shortest_distances[&(start_idx, target_idx)] {
                     time += 1;
-                    for rate in &flow_rates {
-                        released_pressure += *rate;
-                    }
-                    if time >= 29 {
+                    let rel_p_permin: u32 = flow_rates.clone().iter().sum();
+                    released_pressure += rel_p_permin;
+                    // for rate in &flow_rates {
+                    //     released_pressure += *rate;
+                    // }
+                    path.push(format!("Minute {}", &time));
+                    path.push(format!("Releasing {} pressure.", &rel_p_permin));
+                    if time >= 30 {
                         break 'outer;
                     }
                 }
 
+                path.push(format!(
+                    "Arrived at valve {}. ",
+                    graph[target_idx].valvename.clone()
+                ));
+
                 // open valve, or not
-                if !(graph[target_idx].valve_open) {
+                if !(graph[target_idx].valve_open || graph[target_idx].flowrate == 0) {
                     let max_flowrate = get_max_flowrate(&graph);
 
                     let open_threshold =
@@ -278,19 +288,24 @@ fn main() -> Result<()> {
                     // let open_threshold = 0.5;
                     let open_rng: f64 = rng.gen();
                     if open_rng > open_threshold {
-                        graph[target_idx].valve_open = true;
-
-                        flow_rates.push(graph[target_idx].flowrate);
-                        path.push(String::from("Valve opened."));
-                        // Update released pressure
                         time += 1;
-                        for rate in &flow_rates {
-                            released_pressure += *rate;
+                        // Update released pressure
+                        let rel_p_permin: u32 = flow_rates.clone().iter().sum();
+                        released_pressure += rel_p_permin;
+                        flow_rates.push(graph[target_idx].flowrate);
+                        path.push(format!("Minute {}", &time));
+                        path.push(format!("Releasing {} pressure.", &rel_p_permin));
+
+                        graph[target_idx].valve_open = true;
+                        path.push(String::from("Valve opened."));
+                        // for rate in &flow_rates {
+                        //     released_pressure += *rate;
+                        // }
+
+                        if time >= 30 {
+                            break 'outer;
                         }
                     }
-                }
-                if time >= 29 {
-                    break 'outer;
                 }
             }
         }
@@ -298,8 +313,15 @@ fn main() -> Result<()> {
         paths.push(path);
     }
 
-    dbg!(&pressures.len());
-    dbg!(pressures.iter().max().unwrap());
+    let (max_index, max_pressure) = &pressures
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, &val)| val)
+        .unwrap();
+    dbg!(&max_index);
+    dbg!(&max_pressure);
+    dbg!(&paths[*max_index]);
+    // dbg!(&paths[max_index]);
 
     // let pressures: Vec<u32> = (0..1000000)
     //     .into_par_iter()
